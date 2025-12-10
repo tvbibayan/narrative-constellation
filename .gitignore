@@ -1,0 +1,33 @@
+# Environment template - copy to .env
+.env
+*.env.local
+
+# Data files - can be large
+data/
+
+# Database files
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+.venv311/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
