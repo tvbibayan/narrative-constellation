@@ -1,11 +1,20 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║            NARRATIVE CONSTELLATION TERMINAL v3.0                             ║
-║         Graph-Theoretic Financial Narrative Analysis Platform                ║
+║            NARRATIVE CONSTELLATION TERMINAL v4.0                             ║
+║         Graph-Theoretic Financial Narrative Analysis + Alpha Signals         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 A sophisticated narrative analysis system that visualizes headline relationships
 using graph theory, revealing hidden narrative clusters and contagion patterns.
+
+NOVEL ALPHA SIGNALS (Not available in existing tools):
+    1. NFI (Narrative Fragmentation Index) - Measures narrative coherence
+       Formula: NFI = 1 - (largest_cluster_size / total_nodes)
+       High NFI = fragmented narratives = volatility ahead
+       
+    2. SPDS (Sentiment-Price Dislocation Score) - Price vs sentiment divergence
+       Formula: SPDS = Rolling_Correlation(Sentiment, Returns, 5d)
+       Negative SPDS = dislocation = mean reversion opportunity
 
 Core Innovation:
     - Headlines as Nodes in a semantic network
@@ -21,12 +30,12 @@ Architecture:
                                     │
                                     v
                           ┌─────────────────┐
-                          │  Plotly Render  │
-                          │  (Interactive)  │
+                          │  Alpha Signals  │
+                          │  NFI + SPDS     │
                           └─────────────────┘
 
 Author: Financial Engineering Team
-Version: 3.0.0 Constellation
+Version: 4.0.0 Alpha Signals Edition
 """
 
 import streamlit as st
@@ -135,6 +144,26 @@ class Icons:
             return Icons.arrow_down_right("#FF3366", size)
         else:
             return Icons.minus_circle("#64748B", size)
+    
+    @staticmethod
+    def radar(color: str = "#8B5CF6", size: int = 16) -> str:
+        return f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="12 2 15.09 9 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 9" fill="{color}" opacity="0.3"></polygon><line x1="12" y1="12" x2="12" y2="2"></line></svg>'''
+    
+    @staticmethod
+    def divergence(color: str = "#F59E0B", size: int = 16) -> str:
+        return f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path><path d="M21 3l-9 9"></path><path d="M3 21l9-9"></path></svg>'''
+    
+    @staticmethod
+    def pulse(color: str = "#10B981", size: int = 16) -> str:
+        return f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>'''
+    
+    @staticmethod
+    def shield_alert(color: str = "#EF4444", size: int = 16) -> str:
+        return f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>'''
+    
+    @staticmethod
+    def target(color: str = "#06B6D4", size: int = 16) -> str:
+        return f'''<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>'''
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA LAYER - SQLite with Keywords
@@ -409,6 +438,180 @@ class ConstellationEngine:
             'edges': self.graph.number_of_edges(),
             'clusters': nx.number_connected_components(self.graph),
             'density': nx.density(self.graph)
+        }
+    
+    def calculate_nfi(self) -> float:
+        """
+        Calculate Narrative Fragmentation Index (NFI).
+        
+        NFI = 1 - (largest_cluster_size / total_nodes)
+        
+        - High NFI (>0.7) = Fragmented narrative = Uncertainty/Volatility coming
+        - Low NFI (<0.3) = Coherent narrative = Trend continuation likely
+        - NFI ~0.5 = Mixed signals = Neutral
+        
+        This is a NOVEL metric - not available in any existing tool.
+        """
+        if self.graph.number_of_nodes() == 0:
+            return 0.5  # Neutral when no data
+        
+        total_nodes = self.graph.number_of_nodes()
+        
+        # Find the largest connected component
+        if total_nodes == 1:
+            return 0.0  # Single node = perfectly coherent
+        
+        components = list(nx.connected_components(self.graph))
+        if not components:
+            return 1.0  # No connections = maximum fragmentation
+        
+        largest_cluster_size = max(len(c) for c in components)
+        
+        # NFI = 1 - (dominance of largest cluster)
+        nfi = 1.0 - (largest_cluster_size / total_nodes)
+        
+        return round(nfi, 3)
+    
+    def get_cluster_breakdown(self) -> List[Dict]:
+        """Get detailed cluster breakdown for visualization."""
+        if self.graph.number_of_nodes() == 0:
+            return []
+        
+        components = list(nx.connected_components(self.graph))
+        breakdown = []
+        
+        for i, component in enumerate(sorted(components, key=len, reverse=True)[:10]):
+            nodes_data = [self.graph.nodes[n] for n in component]
+            avg_sentiment = np.mean([n['sentiment'] for n in nodes_data])
+            avg_viral = np.mean([n['viral_score'] for n in nodes_data])
+            
+            # Get dominant keywords in cluster
+            all_keywords = []
+            for n in nodes_data:
+                all_keywords.extend(list(n['keywords']))
+            
+            from collections import Counter
+            top_keywords = [kw for kw, _ in Counter(all_keywords).most_common(3)]
+            
+            breakdown.append({
+                'cluster_id': i + 1,
+                'size': len(component),
+                'avg_sentiment': avg_sentiment,
+                'avg_viral': avg_viral,
+                'theme': ', '.join(top_keywords) if top_keywords else 'misc'
+            })
+        
+        return breakdown
+
+
+class AlphaSignalsEngine:
+    """
+    Novel Alpha Signal Generation Engine.
+    
+    Generates unique trading signals not available in existing tools:
+    1. NFI (Narrative Fragmentation Index) - from ConstellationEngine
+    2. SPDS (Sentiment-Price Dislocation Score) - price vs sentiment divergence
+    3. Combined Alpha Score
+    """
+    
+    @staticmethod
+    def calculate_spds(price_df: pd.DataFrame, sentiment_df: pd.DataFrame, window: int = 5) -> Dict:
+        """
+        Calculate Sentiment-Price Dislocation Score (SPDS).
+        
+        SPDS = Rolling correlation between sentiment and price returns
+        
+        - SPDS near +1.0 = Sentiment and price moving together (normal)
+        - SPDS near 0 = Dislocation beginning (watch closely)
+        - SPDS negative = Full dislocation (mean reversion opportunity)
+        
+        This is a NOVEL metric - not available in any existing tool.
+        """
+        if price_df.empty or sentiment_df.empty:
+            return {'current_spds': 0.0, 'signal': 'NEUTRAL', 'history': []}
+        
+        # Prepare price returns
+        price_df = price_df.copy()
+        price_df['date'] = pd.to_datetime(price_df['Date']).dt.date
+        price_df['returns'] = price_df['Close'].pct_change()
+        
+        # Prepare sentiment
+        sentiment_df = sentiment_df.copy()
+        sentiment_df['date'] = pd.to_datetime(sentiment_df['date']).dt.date
+        
+        # Merge on date
+        merged = pd.merge(
+            price_df[['date', 'returns']],
+            sentiment_df[['date', 'avg_sentiment']],
+            on='date',
+            how='inner'
+        ).dropna()
+        
+        if len(merged) < window:
+            return {'current_spds': 0.0, 'signal': 'INSUFFICIENT_DATA', 'history': []}
+        
+        # Calculate rolling correlation
+        merged['spds'] = merged['returns'].rolling(window).corr(merged['avg_sentiment'])
+        merged = merged.dropna()
+        
+        if merged.empty:
+            return {'current_spds': 0.0, 'signal': 'NEUTRAL', 'history': []}
+        
+        current_spds = merged['spds'].iloc[-1]
+        
+        # Generate signal
+        if current_spds < -0.3:
+            signal = 'DISLOCATION'
+        elif current_spds < 0.2:
+            signal = 'DIVERGING'
+        elif current_spds > 0.6:
+            signal = 'ALIGNED'
+        else:
+            signal = 'NEUTRAL'
+        
+        history = merged[['date', 'spds', 'returns', 'avg_sentiment']].to_dict('records')
+        
+        return {
+            'current_spds': round(current_spds, 3),
+            'signal': signal,
+            'history': history
+        }
+    
+    @staticmethod
+    def generate_alpha_score(nfi: float, spds: float) -> Dict:
+        """
+        Generate combined Alpha Score from NFI and SPDS.
+        
+        Alpha Score interpretation:
+        - High NFI + Negative SPDS = Strong contrarian signal (volatility + dislocation)
+        - Low NFI + Positive SPDS = Trend following signal (coherent + aligned)
+        - Mixed = Neutral, wait for clearer signal
+        """
+        # Contrarian score: high when fragmented AND dislocated
+        contrarian = (nfi * 0.6) + (max(0, -spds) * 0.4)
+        
+        # Trend score: high when coherent AND aligned
+        trend = ((1 - nfi) * 0.6) + (max(0, spds) * 0.4)
+        
+        if contrarian > 0.5:
+            signal = 'CONTRARIAN'
+            action = 'Consider mean-reversion plays'
+            confidence = min(contrarian * 100, 95)
+        elif trend > 0.5:
+            signal = 'TREND'
+            action = 'Consider momentum plays'
+            confidence = min(trend * 100, 95)
+        else:
+            signal = 'NEUTRAL'
+            action = 'Wait for clearer signal'
+            confidence = 50
+        
+        return {
+            'signal': signal,
+            'action': action,
+            'confidence': round(confidence, 1),
+            'contrarian_score': round(contrarian, 3),
+            'trend_score': round(trend, 3)
         }
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -729,6 +932,190 @@ class VisualizationEngine:
         fig.update_yaxes(title_text="Sentiment", row=2, col=1, range=[-1, 1])
         
         return fig
+    
+    @staticmethod
+    def create_nfi_gauge(nfi: float) -> go.Figure:
+        """Create NFI gauge visualization."""
+        # Determine color and interpretation
+        if nfi > 0.7:
+            color = "#EF4444"  # Red - high fragmentation
+            interpretation = "HIGH FRAGMENTATION"
+        elif nfi > 0.4:
+            color = "#F59E0B"  # Amber - moderate
+            interpretation = "MODERATE"
+        else:
+            color = "#10B981"  # Green - coherent
+            interpretation = "COHERENT"
+        
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number+delta",
+            value=nfi,
+            number={'suffix': '', 'font': {'size': 36, 'color': '#F1F5F9'}},
+            title={'text': f"NFI<br><span style='font-size:0.7em;color:{color}'>{interpretation}</span>", 
+                   'font': {'size': 14, 'color': '#94A3B8'}},
+            gauge={
+                'axis': {'range': [0, 1], 'tickwidth': 1, 'tickcolor': '#64748B'},
+                'bar': {'color': color, 'thickness': 0.75},
+                'bgcolor': 'rgba(30, 41, 59, 0.5)',
+                'borderwidth': 2,
+                'bordercolor': 'rgba(100, 116, 139, 0.3)',
+                'steps': [
+                    {'range': [0, 0.3], 'color': 'rgba(16, 185, 129, 0.2)'},
+                    {'range': [0.3, 0.7], 'color': 'rgba(245, 158, 11, 0.2)'},
+                    {'range': [0.7, 1], 'color': 'rgba(239, 68, 68, 0.2)'}
+                ],
+                'threshold': {
+                    'line': {'color': '#F1F5F9', 'width': 2},
+                    'thickness': 0.75,
+                    'value': nfi
+                }
+            }
+        ))
+        
+        fig.update_layout(
+            paper_bgcolor='#0E1117',
+            plot_bgcolor='#0E1117',
+            height=250,
+            margin=dict(l=30, r=30, t=60, b=20)
+        )
+        
+        return fig
+    
+    @staticmethod
+    def create_spds_gauge(spds: float, signal: str) -> go.Figure:
+        """Create SPDS gauge visualization."""
+        # Color based on signal
+        colors = {
+            'DISLOCATION': '#EF4444',
+            'DIVERGING': '#F59E0B',
+            'NEUTRAL': '#64748B',
+            'ALIGNED': '#10B981',
+            'INSUFFICIENT_DATA': '#475569'
+        }
+        color = colors.get(signal, '#64748B')
+        
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=spds,
+            number={'font': {'size': 36, 'color': '#F1F5F9'}},
+            title={'text': f"SPDS<br><span style='font-size:0.7em;color:{color}'>{signal}</span>", 
+                   'font': {'size': 14, 'color': '#94A3B8'}},
+            gauge={
+                'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': '#64748B'},
+                'bar': {'color': color, 'thickness': 0.75},
+                'bgcolor': 'rgba(30, 41, 59, 0.5)',
+                'borderwidth': 2,
+                'bordercolor': 'rgba(100, 116, 139, 0.3)',
+                'steps': [
+                    {'range': [-1, -0.3], 'color': 'rgba(239, 68, 68, 0.2)'},
+                    {'range': [-0.3, 0.3], 'color': 'rgba(100, 116, 139, 0.2)'},
+                    {'range': [0.3, 1], 'color': 'rgba(16, 185, 129, 0.2)'}
+                ],
+                'threshold': {
+                    'line': {'color': '#F1F5F9', 'width': 2},
+                    'thickness': 0.75,
+                    'value': spds
+                }
+            }
+        ))
+        
+        fig.update_layout(
+            paper_bgcolor='#0E1117',
+            plot_bgcolor='#0E1117',
+            height=250,
+            margin=dict(l=30, r=30, t=60, b=20)
+        )
+        
+        return fig
+    
+    @staticmethod
+    def create_spds_history_chart(spds_history: List[Dict]) -> go.Figure:
+        """Create SPDS history line chart."""
+        fig = go.Figure()
+        
+        if not spds_history:
+            fig.add_annotation(
+                text="Insufficient Data for SPDS History",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color='#64748B')
+            )
+        else:
+            dates = [h['date'] for h in spds_history]
+            spds_vals = [h['spds'] for h in spds_history]
+            
+            # SPDS line
+            fig.add_trace(go.Scatter(
+                x=dates, y=spds_vals,
+                mode='lines+markers',
+                name='SPDS',
+                line=dict(color='#8B5CF6', width=2),
+                marker=dict(size=6),
+                fill='tozeroy',
+                fillcolor='rgba(139, 92, 246, 0.1)'
+            ))
+            
+            # Reference lines
+            fig.add_hline(y=0, line_dash="solid", line_color="rgba(148, 163, 184, 0.5)", line_width=1)
+            fig.add_hline(y=0.3, line_dash="dash", line_color="rgba(16, 185, 129, 0.5)", line_width=1,
+                         annotation_text="Aligned", annotation_position="right")
+            fig.add_hline(y=-0.3, line_dash="dash", line_color="rgba(239, 68, 68, 0.5)", line_width=1,
+                         annotation_text="Dislocation", annotation_position="right")
+        
+        fig.update_layout(
+            template='plotly_dark',
+            paper_bgcolor='#0E1117',
+            plot_bgcolor='rgba(15, 23, 42, 0.5)',
+            height=300,
+            margin=dict(l=50, r=80, t=40, b=40),
+            title=dict(text='Sentiment-Price Dislocation History', font=dict(size=14, color='#F1F5F9'), x=0.5),
+            yaxis=dict(title='SPDS', range=[-1.1, 1.1], gridcolor='rgba(100, 116, 139, 0.1)'),
+            xaxis=dict(gridcolor='rgba(100, 116, 139, 0.1)')
+        )
+        
+        return fig
+    
+    @staticmethod
+    def create_cluster_breakdown_chart(clusters: List[Dict]) -> go.Figure:
+        """Create cluster breakdown bar chart."""
+        fig = go.Figure()
+        
+        if not clusters:
+            fig.add_annotation(
+                text="No Clusters to Display",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color='#64748B')
+            )
+        else:
+            # Prepare data
+            labels = [f"C{c['cluster_id']}: {c['theme'][:15]}" for c in clusters]
+            sizes = [c['size'] for c in clusters]
+            sentiments = [c['avg_sentiment'] for c in clusters]
+            colors = ['#10B981' if s > 0.1 else '#EF4444' if s < -0.1 else '#64748B' for s in sentiments]
+            
+            fig.add_trace(go.Bar(
+                x=sizes,
+                y=labels,
+                orientation='h',
+                marker_color=colors,
+                text=[f"{s} nodes" for s in sizes],
+                textposition='auto',
+                hovertemplate='<b>%{y}</b><br>Size: %{x} nodes<extra></extra>'
+            ))
+        
+        fig.update_layout(
+            template='plotly_dark',
+            paper_bgcolor='#0E1117',
+            plot_bgcolor='rgba(15, 23, 42, 0.5)',
+            height=300,
+            margin=dict(l=120, r=40, t=40, b=40),
+            title=dict(text='Narrative Cluster Breakdown', font=dict(size=14, color='#F1F5F9'), x=0.5),
+            xaxis=dict(title='Headlines', gridcolor='rgba(100, 116, 139, 0.1)'),
+            yaxis=dict(gridcolor='rgba(100, 116, 139, 0.1)')
+        )
+        
+        return fig
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PRESENTATION LAYER - STREAMLIT UI
@@ -960,7 +1347,7 @@ def main():
                 Narrative Constellation
             </h1>
             <p style="color: #64748B; font-size: 0.75rem; margin-top: 0.3rem;">
-                Graph-Theoretic Analysis v3.0
+                Alpha Signals Edition v4.0
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -1131,7 +1518,13 @@ def main():
     # TABS
     # ══════════════════════════════════════════════════════════════════════════
     
-    tab1, tab2 = st.tabs(["Narrative Constellation", "Price Action"])
+    # Calculate Alpha Signals
+    nfi = constellation.calculate_nfi()
+    spds_result = AlphaSignalsEngine.calculate_spds(price_df, daily_df)
+    alpha_score = AlphaSignalsEngine.generate_alpha_score(nfi, spds_result['current_spds'])
+    cluster_breakdown = constellation.get_cluster_breakdown()
+    
+    tab1, tab2, tab3 = st.tabs(["Narrative Constellation", "Price Action", "Alpha Signals"])
     
     with tab1:
         st.markdown(f"""
@@ -1145,7 +1538,7 @@ def main():
         """, unsafe_allow_html=True)
         
         constellation_fig = viz.create_constellation_chart(graph)
-        st.plotly_chart(constellation_fig, width='stretch')
+        st.plotly_chart(constellation_fig, width="stretch")
     
     with tab2:
         st.markdown(f"""
@@ -1156,7 +1549,135 @@ def main():
         """, unsafe_allow_html=True)
         
         price_fig = viz.create_price_chart(price_df, daily_df, selected_ticker)
-        st.plotly_chart(price_fig, width='stretch')
+        st.plotly_chart(price_fig, width="stretch")
+    
+    with tab3:
+        # Alpha Signals Tab - Novel Metrics
+        st.markdown(f"""
+        <div class="section-header">
+            {Icons.radar('#8B5CF6', 18)}
+            <span>Alpha Signals - Novel Metrics</span>
+            <span style="margin-left: auto; color: #64748B; font-size: 0.75rem; font-weight: 400;">
+                NFI + SPDS = Unique trading signals not available elsewhere
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Alpha Score Banner
+        signal_colors = {'CONTRARIAN': '#EF4444', 'TREND': '#10B981', 'NEUTRAL': '#64748B'}
+        signal_color = signal_colors.get(alpha_score['signal'], '#64748B')
+        
+        st.markdown(f"""
+        <div class="glass-card" style="text-align: center; padding: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                {Icons.target(signal_color, 24)}
+                <span style="color: {signal_color}; font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;">
+                    {alpha_score['signal']} SIGNAL
+                </span>
+            </div>
+            <p style="color: #94A3B8; font-size: 0.9rem; margin: 0.5rem 0;">
+                {alpha_score['action']}
+            </p>
+            <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 1rem;">
+                <div>
+                    <span style="color: #64748B; font-size: 0.7rem;">CONFIDENCE</span><br>
+                    <span style="color: #F1F5F9; font-size: 1.2rem; font-weight: 600;">{alpha_score['confidence']:.0f}%</span>
+                </div>
+                <div>
+                    <span style="color: #64748B; font-size: 0.7rem;">CONTRARIAN</span><br>
+                    <span style="color: #EF4444; font-size: 1.2rem; font-weight: 600;">{alpha_score['contrarian_score']:.2f}</span>
+                </div>
+                <div>
+                    <span style="color: #64748B; font-size: 0.7rem;">TREND</span><br>
+                    <span style="color: #10B981; font-size: 1.2rem; font-weight: 600;">{alpha_score['trend_score']:.2f}</span>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Gauges Row
+        gauge_col1, gauge_col2 = st.columns(2)
+        
+        with gauge_col1:
+            st.markdown(f"""
+            <div class="glass-card-sm">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    {Icons.divergence('#F59E0B', 16)}
+                    <span style="color: #F1F5F9; font-size: 0.85rem; font-weight: 600;">Narrative Fragmentation Index</span>
+                </div>
+                <p style="color: #64748B; font-size: 0.75rem; margin: 0;">
+                    Measures narrative coherence. High NFI = fragmented stories = uncertainty ahead.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            nfi_fig = viz.create_nfi_gauge(nfi)
+            st.plotly_chart(nfi_fig, width="stretch")
+        
+        with gauge_col2:
+            st.markdown(f"""
+            <div class="glass-card-sm">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    {Icons.pulse('#10B981', 16)}
+                    <span style="color: #F1F5F9; font-size: 0.85rem; font-weight: 600;">Sentiment-Price Dislocation</span>
+                </div>
+                <p style="color: #64748B; font-size: 0.75rem; margin: 0;">
+                    Correlation between sentiment and returns. Negative = mean reversion opportunity.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            spds_fig = viz.create_spds_gauge(spds_result['current_spds'], spds_result['signal'])
+            st.plotly_chart(spds_fig, width="stretch")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # History Charts Row
+        chart_col1, chart_col2 = st.columns(2)
+        
+        with chart_col1:
+            spds_history_fig = viz.create_spds_history_chart(spds_result['history'])
+            st.plotly_chart(spds_history_fig, width="stretch")
+        
+        with chart_col2:
+            cluster_fig = viz.create_cluster_breakdown_chart(cluster_breakdown)
+            st.plotly_chart(cluster_fig, width="stretch")
+        
+        # Methodology Explanation
+        with st.expander("Methodology - How These Signals Work"):
+            st.markdown("""
+            ### Narrative Fragmentation Index (NFI)
+            
+            **Formula:** `NFI = 1 - (largest_cluster_size / total_nodes)`
+            
+            **Interpretation:**
+            - **NFI > 0.7 (High):** Multiple conflicting narratives. Expect volatility and uncertainty.
+            - **NFI 0.3-0.7 (Moderate):** Mixed signals. Market is digesting information.
+            - **NFI < 0.3 (Low):** Dominant narrative. Trend continuation likely.
+            
+            ---
+            
+            ### Sentiment-Price Dislocation Score (SPDS)
+            
+            **Formula:** `SPDS = Rolling_Correlation(Sentiment, Returns, window=5)`
+            
+            **Interpretation:**
+            - **SPDS > 0.6 (Aligned):** Sentiment and price moving together. Normal market behavior.
+            - **SPDS 0.2-0.6 (Neutral):** Weak correlation. Watch for divergence.
+            - **SPDS < 0.2 (Diverging):** Sentiment and price decoupling. Potential trade setup forming.
+            - **SPDS < -0.3 (Dislocation):** Strong divergence. Mean reversion opportunity.
+            
+            ---
+            
+            ### Combined Alpha Score
+            
+            The system combines NFI and SPDS to generate:
+            - **CONTRARIAN Signal:** High fragmentation + negative SPDS = consider mean-reversion plays
+            - **TREND Signal:** Low fragmentation + positive SPDS = consider momentum plays
+            - **NEUTRAL:** Mixed signals = wait for clarity
+            
+            *These metrics are novel and not available in existing financial tools.*
+            """)
     
     # ══════════════════════════════════════════════════════════════════════════
     # FOOTER
@@ -1165,7 +1686,8 @@ def main():
     st.markdown("""
     <div style="text-align: center; padding: 1.5rem 0; margin-top: 1rem; border-top: 1px solid rgba(100, 116, 139, 0.2);">
         <p style="color: #475569; font-size: 0.7rem;">
-            Narrative Constellation Terminal v3.0 | Graph-Theoretic Financial Analysis<br>
+            Narrative Constellation Terminal v4.0 | Alpha Signals Edition<br>
+            Novel Metrics: NFI (Narrative Fragmentation Index) + SPDS (Sentiment-Price Dislocation Score)<br>
             Data: Google News RSS + Yahoo Finance | NLP: VADER | Graph: NetworkX
         </p>
     </div>
