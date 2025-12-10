@@ -278,3 +278,4 @@ MIT License - Use at your own risk. This is not financial advice.
 - [LlamaIndex](https://www.llamaindex.ai/) for the GraphRAG framework
 - [Neo4j](https://neo4j.com/) for the graph database
 - [SEC EDGAR](https://www.sec.gov/edgar) for public filings data
+# Auto-sync enabled
