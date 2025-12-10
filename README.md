@@ -2,25 +2,28 @@
 
 A comprehensive financial narrative analysis platform combining Graph Retrieval-Augmented Generation (GraphRAG), VADER sentiment analysis, NetworkX graph theory, and real-time market data visualization.
 
+**Now featuring Novel Alpha Signals (v4.0) - metrics not available in existing financial tools.**
+
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Applications](#applications)
-   - [Narrative Constellation Terminal](#narrative-constellation-terminal-v30)
+2. [Novel Alpha Signals](#novel-alpha-signals)
+3. [Applications](#applications)
+   - [Narrative Constellation Terminal](#narrative-constellation-terminal-v40)
    - [Narrative Alpha Engine](#narrative-alpha-engine)
    - [Narrative Monitor](#narrative-monitor)
    - [Shadow Supply Chain Hunter](#shadow-supply-chain-hunter-graphrag)
-3. [Architecture](#architecture)
-4. [Installation](#installation)
-5. [Configuration](#configuration)
-6. [Usage](#usage)
-7. [Technical Specifications](#technical-specifications)
-8. [API Reference](#api-reference)
-9. [Database Schema](#database-schema)
-10. [Troubleshooting](#troubleshooting)
-11. [License](#license)
+4. [Architecture](#architecture)
+5. [Installation](#installation)
+6. [Configuration](#configuration)
+7. [Usage](#usage)
+8. [Technical Specifications](#technical-specifications)
+9. [API Reference](#api-reference)
+10. [Database Schema](#database-schema)
+11. [Troubleshooting](#troubleshooting)
+12. [License](#license)
 
 ---
 
@@ -34,18 +37,66 @@ This platform provides enterprise-grade financial narrative analysis through mul
 - Interactive Plotly visualizations with candlestick charts
 - SQLite persistence with SHA-256 deduplication
 - Graph-theoretic cluster detection and contagion analysis
+- **Novel Alpha Signals: NFI and SPDS (unique to this platform)**
 
 The system processes financial headlines to extract sentiment signals, identify narrative clusters, and correlate news patterns with price action.
 
 ---
 
+## Novel Alpha Signals
+
+**These metrics are not available in existing financial tools like Bloomberg, Refinitiv, or Sentieo.**
+
+### Narrative Fragmentation Index (NFI)
+
+Measures narrative coherence across headlines. When multiple conflicting stories circulate, expect volatility.
+
+**Formula:**
+```
+NFI = 1 - (largest_cluster_size / total_nodes)
+```
+
+**Interpretation:**
+| NFI Value | Signal | Action |
+|-----------|--------|--------|
+| > 0.7 | HIGH FRAGMENTATION | Multiple conflicting narratives. Expect volatility and uncertainty. |
+| 0.3 - 0.7 | MODERATE | Mixed signals. Market is digesting information. |
+| < 0.3 | COHERENT | Dominant narrative. Trend continuation likely. |
+
+### Sentiment-Price Dislocation Score (SPDS)
+
+Measures the correlation between sentiment and price returns. When they diverge, mean-reversion opportunities emerge.
+
+**Formula:**
+```
+SPDS = Rolling_Correlation(Sentiment, Returns, window=5)
+```
+
+**Interpretation:**
+| SPDS Value | Signal | Action |
+|------------|--------|--------|
+| > 0.6 | ALIGNED | Sentiment and price moving together. Normal market. |
+| 0.2 - 0.6 | NEUTRAL | Weak correlation. Watch for divergence. |
+| < 0.2 | DIVERGING | Potential trade setup forming. |
+| < -0.3 | DISLOCATION | Strong divergence. Mean reversion opportunity. |
+
+### Combined Alpha Score
+
+The system combines NFI and SPDS to generate actionable trading signals:
+
+- **CONTRARIAN Signal:** High NFI + Negative SPDS = Consider mean-reversion plays
+- **TREND Signal:** Low NFI + Positive SPDS = Consider momentum plays
+- **NEUTRAL:** Mixed signals = Wait for clarity
+
+---
+
 ## Applications
 
-### Narrative Constellation Terminal v3.0
+### Narrative Constellation Terminal v4.0
 
 **File:** `narrative_constellation.py`
 
-The flagship application providing graph-theoretic financial narrative analysis with an interactive constellation visualization.
+The flagship application providing graph-theoretic financial narrative analysis with an interactive constellation visualization and novel alpha signals.
 
 #### Core Features
 
@@ -55,6 +106,14 @@ The flagship application providing graph-theoretic financial narrative analysis 
 - Node color indicates sentiment (green for bullish, red for bearish, gray for neutral)
 - Node size represents viral potential score
 - Interactive zoom, pan, and hover tooltips
+
+**Alpha Signals Tab (NEW in v4.0)**
+- NFI Gauge: Real-time Narrative Fragmentation Index visualization
+- SPDS Gauge: Sentiment-Price Dislocation Score with signal interpretation
+- Combined Alpha Score: CONTRARIAN / TREND / NEUTRAL signals with confidence
+- SPDS History Chart: Track dislocation patterns over time
+- Cluster Breakdown: Visualize narrative themes and their sizes
+- Methodology Expander: Full documentation of signal calculations
 
 **Sentiment Analysis Pipeline**
 - VADER (Valence Aware Dictionary and sEntiment Reasoner) compound scoring
@@ -77,17 +136,22 @@ The flagship application providing graph-theoretic financial narrative analysis 
 
 ```
 Architecture:
-    RSS Ingestion --> SQLite + NLP --> NetworkX Graph --> Plotly Render
-    (Google News)    (VADER + KW)     (Constellation)    (Interactive)
+    RSS Ingestion --> SQLite + NLP --> NetworkX Graph --> Alpha Signals
+    (Google News)    (VADER + KW)     (Constellation)    (NFI + SPDS)
+                                            |
+                                            v
+                                      Plotly Render
+                                      (Interactive)
 ```
 
 **Classes:**
 - `Config`: Centralized configuration management
 - `DatabaseService`: SQLite backend with keyword storage
 - `NLPEngine`: VADER sentiment analysis with financial lexicon
-- `ConstellationEngine`: NetworkX graph construction
+- `ConstellationEngine`: NetworkX graph construction + NFI calculation
+- `AlphaSignalsEngine`: SPDS calculation and combined alpha score generation
 - `IngestionService`: RSS feed processing pipeline
-- `VisualizationEngine`: Plotly chart generation
+- `VisualizationEngine`: Plotly chart generation including gauge visualizations
 
 ---
 
