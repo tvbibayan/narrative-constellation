@@ -1232,6 +1232,16 @@ def apply_theme():
         section[data-testid="stSidebar"] {
             background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
             border-right: 1px solid rgba(100, 116, 139, 0.2);
+            min-width: 300px !important;
+            width: 300px !important;
+        }
+        
+        section[data-testid="stSidebar"] > div {
+            padding-top: 1rem;
+        }
+        
+        [data-testid="stSidebarCollapsedControl"] {
+            display: none;
         }
         
         section[data-testid="stSidebar"] .stButton > button {
@@ -1335,6 +1345,10 @@ def main():
     constellation = ConstellationEngine()
     viz = VisualizationEngine()
     
+    # Initialize shared UI state
+    if 'selected_ticker' not in st.session_state:
+        st.session_state['selected_ticker'] = Config.DEFAULT_TICKERS[0]
+
     # ══════════════════════════════════════════════════════════════════════════
     # SIDEBAR
     # ══════════════════════════════════════════════════════════════════════════
@@ -1362,10 +1376,16 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        selected_ticker = st.selectbox("Ticker", Config.DEFAULT_TICKERS, label_visibility="collapsed")
-        custom = st.text_input("Custom", placeholder="e.g., COIN", label_visibility="collapsed")
+        st.session_state['selected_ticker'] = st.selectbox(
+            "Ticker",
+            Config.DEFAULT_TICKERS,
+            index=Config.DEFAULT_TICKERS.index(st.session_state['selected_ticker']) if st.session_state['selected_ticker'] in Config.DEFAULT_TICKERS else 0,
+            label_visibility="collapsed",
+            key="ticker_select_sidebar"
+        )
+        custom = st.text_input("Custom", placeholder="e.g., COIN", label_visibility="collapsed", key="custom_ticker_sidebar")
         if custom:
-            selected_ticker = custom.upper().strip()
+            st.session_state['selected_ticker'] = custom.upper().strip()
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -1378,7 +1398,7 @@ def main():
         """, unsafe_allow_html=True)
         
         if st.button("Ingest Data", key="ingest"):
-            with st.spinner(f"Fetching {selected_ticker}..."):
+            with st.spinner(f"Fetching {st.session_state['selected_ticker']}..."):
                 new, dup, status = ingestion.ingest(selected_ticker)
                 if status == "Success":
                     st.success(f"{new} new headlines")
@@ -1405,10 +1425,10 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        query = st.text_input("Ask the Data", placeholder="Why is the stock down?", label_visibility="collapsed")
+        query = st.text_input("Ask the Data", placeholder="Why is the stock down?", label_visibility="collapsed", key="query_sidebar")
         
         if query:
-            results = db.search_headlines(query, selected_ticker, limit=3)
+            results = db.search_headlines(query, st.session_state['selected_ticker'], limit=3)
             if not results.empty:
                 st.markdown(f"""
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0.5rem 0;">
@@ -1467,12 +1487,76 @@ def main():
     # ══════════════════════════════════════════════════════════════════════════
     # MAIN CONTENT
     # ══════════════════════════════════════════════════════════════════════════
+
+    # Toggle popover for controls (non-breaking addition)
+    pop_cols = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    with pop_cols[-1]:
+        pop = st.popover("Controls")
+    with pop:
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+            {Icons.constellation('#00D9FF', 18)}
+            <span style="color: #F1F5F9; font-size: 0.95rem; font-weight: 600;">Quick Controls</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Ticker selection (synced with sidebar)
+        st.session_state['selected_ticker'] = st.selectbox(
+            "Ticker",
+            Config.DEFAULT_TICKERS,
+            index=Config.DEFAULT_TICKERS.index(st.session_state['selected_ticker']) if st.session_state['selected_ticker'] in Config.DEFAULT_TICKERS else 0,
+            key="ticker_select_popover"
+        )
+        custom_pop = st.text_input("Custom", placeholder="e.g., COIN", key="custom_ticker_popover")
+        if custom_pop:
+            st.session_state['selected_ticker'] = custom_pop.upper().strip()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Ingest controls (shared services)
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Ingest Data", key="ingest_pop"):
+                with st.spinner(f"Fetching {st.session_state['selected_ticker']}..."):
+                    new, dup, status = ingestion.ingest(st.session_state['selected_ticker'])
+                    if status == "Success":
+                        st.success(f"{new} new headlines")
+                    else:
+                        st.warning(status)
+        with c2:
+            if st.button("Ingest All", key="ingest_all_pop"):
+                progress = st.progress(0)
+                total = 0
+                for i, t in enumerate(Config.DEFAULT_TICKERS):
+                    new, _, _ = ingestion.ingest(t)
+                    total += new
+                    progress.progress((i + 1) / len(Config.DEFAULT_TICKERS))
+                    time.sleep(0.2)
+                st.success(f"{total} total headlines")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Tactical Query (shared)
+        query_pop = st.text_input("Ask the Data", placeholder="Why is the stock down?", key="query_popover")
+        if query_pop:
+            results = db.search_headlines(query_pop, st.session_state['selected_ticker'], limit=3)
+            if not results.empty:
+                for _, row in results.iterrows():
+                    render_insight_card(
+                        row['headline'],
+                        row['sentiment'],
+                        row['viral_score'],
+                        row['source'],
+                        str(row['timestamp'])[:16]
+                    )
+            else:
+                st.info("No matching headlines")
     
     # Header
     st.markdown(f"""
     <div style="margin-bottom: 1.5rem;">
         <h1 style="color: #F1F5F9; font-size: 1.5rem; margin: 0; font-weight: 700;">
-            {selected_ticker} Narrative Analysis
+            {st.session_state['selected_ticker']} Narrative Analysis
         </h1>
         <p style="color: #64748B; font-size: 0.85rem; margin-top: 0.3rem;">
             Graph-theoretic visualization of narrative clusters and contagion patterns
@@ -1481,6 +1565,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # Fetch data
+    selected_ticker = st.session_state['selected_ticker']
     headlines_df = db.get_ticker_headlines(selected_ticker)
     daily_df = db.get_daily_aggregates(selected_ticker)
     price_df = viz.fetch_price_data(selected_ticker)
